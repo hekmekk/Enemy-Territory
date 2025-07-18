@@ -416,12 +416,12 @@ void ( APIENTRY * qglVertex4sv )( const GLshort *v );
 void ( APIENTRY * qglVertexPointer )( GLint size, GLenum type, GLsizei stride, const GLvoid *pointer );
 void ( APIENTRY * qglViewport )( GLint x, GLint y, GLsizei width, GLsizei height );
 
-void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
-void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
-void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
+// void ( APIENTRY * qglMultiTexCoord2fARB )( GLenum texture, GLfloat s, GLfloat t );
+// void ( APIENTRY * qglActiveTextureARB )( GLenum texture );
+// void ( APIENTRY * qglClientActiveTextureARB )( GLenum texture );
 
-void ( APIENTRY * qglLockArraysEXT )( int, int );
-void ( APIENTRY * qglUnlockArraysEXT )( void );
+// void ( APIENTRY * qglLockArraysEXT )( int, int );
+// void ( APIENTRY * qglUnlockArraysEXT )( void );
 
 void ( APIENTRY * qglPointParameterfEXT )( GLenum param, GLfloat value );
 void ( APIENTRY * qglPointParameterfvEXT )( GLenum param, const GLfloat *value );
