@@ -259,7 +259,7 @@ if ( g_os == 'Linux' ):
 	gas_env.Append( CPPDEFINES = [ 'ELF' ] )
 	gas_env.Append( ASFLAGS = [ '-m32', '-x', 'assembler-with-cpp' ] )
 	matha = gas_env.StaticObject( 'unix/matha.spp' )
-        snd_mixa = gas_env.StaticObject( 'unix/snd_mixa.spp' )
+	snd_mixa = gas_env.StaticObject( 'unix/snd_mixa.spp' )
 
 splines_env = g_env.Clone()
 splines_lib = splines_env.StaticLibrary( splines_list )

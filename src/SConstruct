@@ -3,7 +3,9 @@
 # TTimo <ttimo@idsoftware.com>
 # http://scons.sourceforge.net
 
-import sys, os, time, commands, re, pickle, StringIO, popen2, commands, pdb, zipfile, string, tempfile
+# from io import StringIO <- if this is event required
+# popen2 <- required?
+import sys, os, time, re, pickle, subprocess, pdb, zipfile, string, tempfile
 import SCons
 
 import scons_utils
@@ -90,28 +92,28 @@ EnsureSConsVersion( 0, 96 )
 # system detection -------------------------------
 
 # CPU type
-cpu = commands.getoutput('uname -m')
+cpu = subprocess.getoutput('uname -m')
 dll_cpu = '???' # grmbl, alternative naming for .so
 exp = re.compile('.*i?86.*')
 if exp.match(cpu):
 	cpu = 'x86'
 	dll_cpu = 'i386'
 else:
-	cpu = commands.getoutput('uname -p')
+	cpu = subprocess.getoutput('uname -p')
 	if ( cpu == 'powerpc' ):
 		cpu = 'ppc'
 		dll_cpu = cpu
 	else:
 		cpu = 'cpu'
 		dll_cpu = cpu
-OS = commands.getoutput( 'uname -s' )
+OS = subprocess.getoutput( 'uname -s' )
 if ( OS == 'Darwin' ):
-	print 'EXPERIMENTAL - INCOMPLETE'
-	print 'Use the XCode projects to compile ET universal binaries for OSX'
+	print('EXPERIMENTAL - INCOMPLETE')
+	print('Use the XCode projects to compile ET universal binaries for OSX')
 	cpu = 'osx'
 	dll_cpu = 'osx'
 
-print 'cpu: ' + cpu
+print('cpu: ' + cpu)
 
 # end system detection ---------------------------
 
@@ -140,7 +142,7 @@ BUILDMPBIN = '0'
 def gcc_major():
 	major = os.popen( CC + ' -dumpversion' ).read().strip()
 	major = re.sub('^([^.]+)\\..*$', '\\1', major)
-	print 'gcc major: %s' % major
+	print('gcc major: %s' % major)
 	return major
 
 gcc3 = (gcc_major() != '2')
@@ -155,25 +157,24 @@ elif OS == 'Darwin':
 	g_os = 'Darwin'
 else:
 	g_os = 'Linux'
-print 'OS: %s' % g_os
+print('OS: %s' % g_os)
 
 # end arch detection -----------------------------
 
 # site settings ----------------------------------
 
-if ( not ARGUMENTS.has_key( 'NOCONF' ) or ARGUMENTS['NOCONF'] != '1' ):
-	site_dict = {}
-	if (os.path.exists(conf_filename)):
-		site_file = open(conf_filename, 'r')
-		p = pickle.Unpickler(site_file)
-		site_dict = p.load()
-		print 'Loading build configuration from ' + conf_filename + ':'
+site_dict = {}
+if ( 'NOCONF' not in ARGUMENTS or ARGUMENTS['NOCONF'] != '1' ):
+	if (os.path.exists(conf_filename) and os.stat(conf_filename).st_size != 0):
+		with open(conf_filename, 'rb') as f:
+			site_dict = pickle.load(f)
+		print('Loading build configuration from ' + conf_filename + ':')
 		for k, v in site_dict.items():
 			exec_cmd = k + '=\'' + v + '\''
-			print '  ' + exec_cmd
+			print('  ' + exec_cmd)
 			exec(exec_cmd)
 else:
-	print 'Site settings ignored'
+	print('Site settings ignored')
 
 # end site settings ------------------------------
 
@@ -181,22 +182,20 @@ else:
 
 for k in ARGUMENTS.keys():
 	exec_cmd = k + '=\'' + ARGUMENTS[k] + '\''
-	print 'Command line: ' + exec_cmd
+	print('Command line: ' + exec_cmd)
 	exec( exec_cmd )
 
 # end command line settings ----------------------
 
 # save site configuration ----------------------
 
-if ( not ARGUMENTS.has_key( 'NOCONF' ) or ARGUMENTS['NOCONF'] != '1' ):
+if ( 'NOCONF' not in ARGUMENTS or ARGUMENTS['NOCONF'] != '1' ):
 	for k in serialized:
 		exec_cmd = 'site_dict[\'' + k + '\'] = ' + k
 		exec(exec_cmd)
 
-	site_file = open(conf_filename, 'w')
-	p = pickle.Pickler(site_file)
-	p.dump(site_dict)
-	site_file.close()
+	with open(conf_filename, 'wb') as f:
+		pickle.dump(site_dict, f)
 
 # end save site configuration ------------------
 
@@ -260,7 +259,7 @@ elif ( BUILD == 'release' ):
 	elif ( OS == 'Darwin' ):
 		OPTCPPFLAGS = []
 else:
-	print 'Unknown build configuration ' + BUILD
+	print('Unknown build configuration ' + BUILD)
 	sys.exit(0)
 
 # create the build environements
@@ -282,7 +281,7 @@ if ( OS == 'Darwin' ):
 g_env.Append( CPPFLAGS = '-fno-strict-aliasing' )
 
 if ( int(JOBS) > 1 ):
-	print 'Using buffered process output'
+	print('Using buffered process output')
 	scons_utils.SetupBufferedOutput( g_env )
 
 # mark the globals
@@ -329,7 +328,7 @@ if ( TARGET_CORE == '1' ):
 	if ( DEDICATED == '0' or DEDICATED == '2' ):
 		local_dedicated = 0
 		Export( 'GLOBALS ' + GLOBALS )
-		BuildDir( g_build + '/core', '.', duplicate = 0 )
+		VariantDir( g_build + '/core', '.', duplicate = 0 )
 		et = SConscript( g_build + '/core/SConscript.core' )
 		if ( g_os == 'win32' ):
 			toplevel_targets.append( InstallAs( '#et.exe', et ) )
@@ -339,7 +338,7 @@ if ( TARGET_CORE == '1' ):
 	if ( DEDICATED == '1' or DEDICATED == '2' ):
 		local_dedicated = 1
 		Export( 'GLOBALS ' + GLOBALS )
-		BuildDir( g_build + '/dedicated', '.', duplicate = 0 )
+		VariantDir( g_build + '/dedicated', '.', duplicate = 0 )
 		etded = SConscript( g_build + '/dedicated/SConscript.core' )
 		if ( g_os == 'win32' ):
 			toplevel_targets.append( InstallAs( '#etded.exe', etded ) )
@@ -348,25 +347,25 @@ if ( TARGET_CORE == '1' ):
 
 if ( TARGET_BSPC == '1' ):
 	Export( 'GLOBALS ' + GLOBALS )
-	BuildDir( g_build + '/bspc', '.', duplicate = 0 )
+	VariantDir( g_build + '/bspc', '.', duplicate = 0 )
 	bspc = SConscript( g_build + '/bspc/SConscript.bspc' )
 	toplevel_targets.append( InstallAs( '#bspc.' + cpu, bspc ) )
 
 if ( TARGET_GAME == '1' ):
 	Export( 'GLOBALS ' + GLOBALS )
-	BuildDir( g_build + '/game', '.', duplicate = 0 )
+	VariantDir( g_build + '/game', '.', duplicate = 0 )
 	game = SConscript( g_build + '/game/SConscript.game' )
 	toplevel_targets.append( InstallAs( '#qagame.mp.%s.so' % dll_cpu, game ) )
 
 if ( TARGET_CGAME == '1' ):
 	Export( 'GLOBALS ' + GLOBALS )
-	BuildDir( g_build + '/cgame', '.', duplicate = 0 )
+	VariantDir( g_build + '/cgame', '.', duplicate = 0 )
 	cgame = SConscript( g_build + '/cgame/SConscript.cgame' )
 	toplevel_targets.append( InstallAs( '#cgame.mp.%s.so' % dll_cpu, cgame ) )
 
 if ( TARGET_UI == '1' ):
 	Export( 'GLOBALS ' + GLOBALS )
-	BuildDir( g_build + '/ui', '.', duplicate = 0 )
+	VariantDir( g_build + '/ui', '.', duplicate = 0 )
 	ui = SConscript( g_build + '/ui/SConscript.ui' )
 	toplevel_targets.append( InstallAs( '#ui.mp.%s.so' % dll_cpu, ui ) )
 
@@ -395,7 +394,7 @@ class MpBin(scons_utils.idSetupBase):
 		mac_bundle_dir = tempfile.mkdtemp( prefix = 'mp_mac' )
 		self.SimpleCommand( 'cp -R "../bin/Wolfenstein ET.app/Contents/Resources/ui_mac.bundle" ' + mac_bundle_dir )
 		self.SimpleCommand( 'cp -R "../bin/Wolfenstein ET.app/Contents/Resources/cgame_mac.bundle" ' + mac_bundle_dir )
-		self.SimpleCommand( 'find %s -name \.svn | xargs rm -rf' % mac_bundle_dir )
+		self.SimpleCommand( 'find %s -name *.svn | xargs rm -rf' % mac_bundle_dir )
 		self.SimpleCommand( 'cd %s ; zip -r -D %s/ui_mac.zip ui_mac.bundle ; mv %s/ui_mac.zip %s/ui_mac' % ( mac_bundle_dir, temp_dir, temp_dir, temp_dir ) )
 		self.SimpleCommand( 'cd %s ; zip -r -D %s/cgame_mac.zip cgame_mac.bundle ; mv %s/cgame_mac.zip %s/cgame_mac' % ( mac_bundle_dir, temp_dir, temp_dir, temp_dir ) )
 		mp_bin_path = os.path.abspath( os.path.join ( os.getcwd(), '../etmain/mp_bin.pk3' ) )
